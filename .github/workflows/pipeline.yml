@@ -1,21 +1,59 @@
-name: First Pipeline
+name: CI-CD Pipeline
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
+
   build:
+
     runs-on: ubuntu-latest
 
     steps:
+
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
+    # 1. Run Unit Tests
     - name: Run Unit Tests
-      run: mvn test
+      run: |
+        echo "Running tests..."
+        mvn test
 
-    - name: Build App
-      run: mvn clean package -DskipTests
+    # 2. Build App
+    - name: Build Application
+      run: |
+        mvn clean package -DskipTests
 
+    # 3. Build Docker Image
+    - name: Build Image
+      run: |
+        docker build -t ${{ secrets.DOCKER_USER }}/jenkins-app:latest .
 
+    # 4. Scan Image (Trivy)
+    - name: Scan Image
+      run: |
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+        aquasec/trivy image ${{ secrets.DOCKER_USER }}/jenkins-app:latest
+
+    # 5. Login & Push Image
+    - name: Login to DockerHub
+      run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+
+    - name: Push Image
+      run: |
+        docker push ${{ secrets.DOCKER_USER }}/jenkins-app:latest
+
+    # 6. Remove local image
+    - name: Clean Docker Images
+      run: |
+        docker rmi ${{ secrets.DOCKER_USER }}/jenkins-app:latest || true
+
+    # 7. Deploy on Kubernetes
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v4
+
+    - name: Deploy to K8s
+      run: |
+        kubectl apply -f k8s/
