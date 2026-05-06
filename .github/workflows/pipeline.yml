@@ -4,56 +4,66 @@ on:
   push:
     branches: [ "main" ]
 
-jobs:
+env:
+  IMAGE_NAME: jenkins-app
 
+jobs:
   build:
 
     runs-on: ubuntu-latest
 
     steps:
 
-    - name: Checkout code
+    # 1. Checkout
+    - name: Checkout Code
       uses: actions/checkout@v4
 
-    # 1. Run Unit Tests
+    # 2. Setup Java (عشان Maven)
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    # 3. Run Unit Tests
     - name: Run Unit Tests
-      run: |
-        echo "Running tests..."
-        mvn test
+      run: mvn test
 
-    # 2. Build App
+    # 4. Build App
     - name: Build Application
-      run: |
-        mvn clean package -DskipTests
+      run: mvn clean package -DskipTests
 
-    # 3. Build Docker Image
+    # 5. Build Docker Image
     - name: Build Image
       run: |
-       docker build -t ${{ secrets.DOCKER_USER }}/jenkins-app:latest .
+        docker build -t ${{ secrets.DOCKER_USER }}/${{ env.IMAGE_NAME }}:latest .
 
-    # 4. Scan Image (Trivy)
+    # 6. Scan Image (Trivy)
     - name: Scan Image
       run: |
         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-        aquasec/trivy image ${{ secrets.DOCKER_USER }}/jenkins-app:latest
+        aquasec/trivy image ${{ secrets.DOCKER_USER }}/${{ env.IMAGE_NAME }}:latest || true
 
-    # 5. Login & Push Image
+    # 7. Login to DockerHub
     - name: Login to DockerHub
-      run: echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
+      run: |
+        echo "${{ secrets.DOCKER_PASS }}" | docker login -u "${{ secrets.DOCKER_USER }}" --password-stdin
 
+    # 8. Push Image
     - name: Push Image
       run: |
-        docker push ${{ secrets.DOCKER_USER }}/jenkins-app:latest
+        docker push ${{ secrets.DOCKER_USER }}/${{ env.IMAGE_NAME }}:latest
 
-    # 6. Remove local image
-    - name: Clean Docker Images
+    # 9. Remove Local Image
+    - name: Remove Local Image
       run: |
-        docker rmi ${{ secrets.DOCKER_USER }}/jenkins-app:latest || true
+        docker rmi ${{ secrets.DOCKER_USER }}/${{ env.IMAGE_NAME }}:latest || true
 
-    # 7. Deploy on Kubernetes
+    # 10. Setup kubectl
     - name: Setup kubectl
       uses: azure/setup-kubectl@v4
 
+    # 11. Deploy to Kubernetes
     - name: Deploy to K8s
       run: |
         kubectl apply -f k8s/
