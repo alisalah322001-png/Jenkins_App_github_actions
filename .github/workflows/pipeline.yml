@@ -29,7 +29,7 @@ jobs:
     # 3. Build Docker Image
     - name: Build Image
       run: |
-        docker build -t ${{ secrets.DOCKER_USER }}/jenkins-app:latest .
+       docker build -t ${{ secrets.DOCKER_USER }}/jenkins-app:latest .
 
     # 4. Scan Image (Trivy)
     - name: Scan Image
