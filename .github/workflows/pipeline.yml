@@ -58,10 +58,13 @@ jobs:
     - name: Remove Local Image
       run: |
         docker rmi ${{ secrets.DOCKER_USER }}/${{ env.IMAGE_NAME }}:latest || true
-
-    # 10. Setup kubectl
-    - name: Setup kubectl
-      uses: azure/setup-kubectl@v4
-    - name: Deploy to K8s
+    #deploy kubernetess    
+    - name: Setup Kubeconfig
       run: |
-         kubectl apply -f k8s/ --validate=false || true
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+    
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
