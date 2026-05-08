@@ -58,7 +58,7 @@ jobs:
     - name: Remove Local Image
       run: |
         docker rmi ${{ secrets.DOCKER_USER }}/${{ env.IMAGE_NAME }}:latest || true
-    #deploy kubernetess    
+    #deploy kubernetess k8s  
     - name: Setup Kubeconfig
       run: |
         mkdir -p ~/.kube
